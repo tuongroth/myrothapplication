@@ -1,0 +1,110 @@
+import React from 'react';
+import { Text, View, StyleSheet, Pressable, SafeAreaView, FlatList } from 'react-native';
+import Constants from 'expo-constants';
+
+// Repository data
+const repositories = [
+  {
+    id: '1',
+    fullName: 'owner/repo1',
+    description: 'This is the first repository.',
+    language: 'JavaScript',
+    forks: 10,
+    stars: 20,
+    ratingAverage: 4.5,
+    numberOfReviews: 5,
+  },
+  {
+    id: '2',
+    fullName: 'owner/repo2',
+    description: 'This is the second repository.',
+    language: 'Python',
+    forks: 5,
+    stars: 15,
+    ratingAverage: 4,
+    numberOfReviews: 3,
+  },
+];
+
+// AppBar component with pressable "Repositories" tab
+const AppBar = () => {
+  return (
+    <View style={styles.appBar}>
+      <Pressable style={styles.appBarTab}>
+        <Text style={styles.appBarText}>Repositories</Text>
+      </Pressable>
+    </View>
+  );
+};
+
+// Repository item component
+const RepositoryItem = ({ repository }) => (
+  <View style={styles.card}>
+    <Text style={styles.title}>{repository.fullName}</Text>
+    <Text>{repository.description}</Text>
+    <Text>Language: {repository.language}</Text>
+    <Text>Forks: {repository.forks}</Text>
+    <Text>Stars: {repository.stars}</Text>
+    <Text>Rating Average: {repository.ratingAverage}</Text>
+    <Text>Number of Reviews: {repository.numberOfReviews}</Text>
+  </View>
+);
+
+// Repository list component
+const RepositoryList = () => (
+  <FlatList
+    data={repositories}
+    renderItem={({ item }) => <RepositoryItem repository={item} />}
+    keyExtractor={(item) => item.id}
+  />
+);
+
+// Main component containing AppBar and RepositoryList
+const Main = () => {
+  return (
+    <SafeAreaView style={styles.container}>
+      <AppBar />
+      <RepositoryList />
+    </SafeAreaView>
+  );
+};
+
+export default function App() {
+  return <Main />;
+}
+
+// Styles for the application
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  appBar: {
+    paddingTop: Constants.statusBarHeight,
+    backgroundColor: '#24292e',
+    paddingBottom: 10,
+    flexDirection: 'row',
+  },
+  appBarTab: {
+    marginLeft: 15,
+  },
+  appBarText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  card: {
+    padding: 15,
+    margin: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
