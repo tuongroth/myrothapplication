@@ -1,0 +1,49 @@
+// AppBar.jsx
+
+import { View, ScrollView, Text, StyleSheet, Pressable } from 'react-native';
+import Constants from 'expo-constants';
+
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: Constants.statusBarHeight,
+    backgroundColor: '#24292e',
+  },
+  tab: {
+    padding: 16,
+    color: '#fff',
+  },
+  scrollView: {
+    flexDirection: 'row',
+  },
+});
+
+const AppBar = () => {
+  return (
+    <View style={styles.container}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
+        <Pressable>
+          <Text style={styles.tab}>Repositories</Text>
+        </Pressable>
+        <Pressable>
+          <Text style={styles.tab}>Sign In</Text>
+        </Pressable>
+        <Pressable>
+          <Text style={styles.tab}>Another Tab</Text>
+        </Pressable>
+        <Pressable>
+          <Text style={styles.tab}>More Tabs</Text>
+        </Pressable>
+        <Pressable>
+          <Text style={styles.tab}>Extra Tab</Text>
+        </Pressable>
+        <Pressable>
+          <Text style={styles.tab}>Final Tab</Text>
+        </Pressable>
+        {/* Add more tabs as needed to test scrolling */}
+      </ScrollView>
+    </View>
+  );
+};
+
+export default AppBar;
+
