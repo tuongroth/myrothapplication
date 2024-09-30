@@ -1,0 +1,86 @@
+import React from 'react';
+import { Text, SafeAreaView, StyleSheet, FlatList, View } from 'react-native';
+import { Card } from 'react-native-paper';
+
+const repositories = [
+  {
+    id: '1',
+    fullName: 'owner/repo1',
+    description: 'This is the first repository.',
+    language: 'JavaScript',
+    forks: 10,
+    stars: 20,
+    ratingAverage: 4.5,
+    numberOfReviews: 5,
+  },
+  {
+    id: '2',
+    fullName: 'owner/repo2',
+    description: 'This is the second repository.',
+    language: 'Python',
+    forks: 5,
+    stars: 15,
+    ratingAverage: 4,
+    numberOfReviews: 3,
+  },
+];
+
+const RepositoryItem = ({ repository }) => (
+  <Card style={styles.card}>
+    <Card.Content>
+      <Text style={styles.title}>{repository.fullName}</Text>
+      <Text>{repository.description}</Text>
+      <Text>Language: {repository.language}</Text>
+      <Text>Forks: {repository.forks}</Text>
+      <Text>Stars: {repository.stars}</Text>
+      <Text>Rating Average: {repository.ratingAverage}</Text>
+      <Text>Number of Reviews: {repository.numberOfReviews}</Text>
+    </Card.Content>
+  </Card>
+);
+
+const RepositoryList = () => (
+  <FlatList
+    data={repositories}
+    renderItem={({ item }) => <RepositoryItem repository={item} />}
+    keyExtractor={(item) => item.id}
+  />
+);
+
+export default function HelloRoth() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.greeting}>Hello, Roth!</Text>
+      <Text style={styles.paragraph}>Reviewed Repositories</Text>
+      <RepositoryList />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    backgroundColor: '#ecf0f1',
+    padding: 8,
+  },
+  greeting: {
+    margin: 24,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  paragraph: {
+    margin: 24,
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  card: {
+    marginVertical: 10,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
