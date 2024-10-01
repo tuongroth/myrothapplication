@@ -1,0 +1,90 @@
+import React, { useState } from 'react';
+import { View, TextInput, Button, Alert, StyleSheet, Text } from 'react-native';
+
+const SignIn = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({ username: '', password: '' });
+
+  const validateForm = () => {
+    const newErrors = { username: '', password: '' };
+
+    // Check if username is empty
+    if (!username) {
+      newErrors.username = 'Username is required';
+    }
+
+    // Check if password is empty
+    if (!password) {
+      newErrors.password = 'Password is required';
+    }
+
+    // Set the errors state
+    setErrors(newErrors);
+    
+    // Return true if no errors, otherwise false
+    return !newErrors.username && !newErrors.password;
+  };
+
+  const handleSubmit = () => {
+    // Validate the form before submitting
+    if (validateForm()) {
+      console.log({ username, password });
+      Alert.alert(`Username: ${username}, Password: ${password}`);
+      // Clear the inputs after successful submission
+      setUsername('');
+      setPassword('');
+      setErrors({ username: '', password: '' }); // Clear errors
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View>
+        <TextInput
+          style={[styles.input, errors.username ? styles.errorInput : null]}
+          placeholder="Username"
+          onChangeText={setUsername}
+          value={username}
+        />
+        {errors.username ? <Text style={styles.errorText}>{errors.username}</Text> : null}
+      </View>
+      <View>
+        <TextInput
+          style={[styles.input, errors.password ? styles.errorInput : null]}
+          placeholder="Password"
+          secureTextEntry
+          onChangeText={setPassword}
+          value={password}
+        />
+        {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+      </View>
+      <Button
+        title="Sign In"
+        onPress={handleSubmit}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  errorInput: {
+    borderColor: 'red',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  },
+});
+
+export default SignIn;
