@@ -1,0 +1,131 @@
+import React from 'react';
+import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { View, Text, FlatList, Pressable, ActivityIndicator, Button, Linking } from 'react-native';
+import { useQuery, gql } from '@apollo/client';
+
+// GraphQL query to fetch a single repository
+const REPOSITORY_QUERY = gql`
+  query repository($id: ID!) {
+    repository(id: $id) {
+      id
+      fullName
+      description
+      language
+      forksCount
+      stargazersCount
+      ratingAverage
+      reviewCount
+      url
+    }
+  }
+`;
+
+// RepositoryItem component to display repository details
+const RepositoryItem = ({ repository, onOpen }) => (
+  <View testID="repositoryItem">
+    <Text>{repository.fullName}</Text>
+    <Text>{repository.description}</Text>
+    <Text>Language: {repository.language}</Text>
+    <Text>Forks: {repository.forksCount}</Text>
+    <Text>Stars: {repository.stargazersCount}</Text>
+    <Text>Rating: {repository.ratingAverage}</Text>
+    <Text>Reviews: {repository.reviewCount}</Text>
+    <Button title="Open in GitHub" onPress={onOpen} />
+  </View>
+);
+
+// SingleRepositoryView component to fetch and display a single repository
+const SingleRepositoryView = ({ route }) => {
+  const { id } = route.params; // get id from route parameters
+  const { loading, error, data } = useQuery(REPOSITORY_QUERY, {
+    variables: { id },
+  });
+
+  const openInGitHub = () => {
+    Linking.openURL(data.repository.url);
+  };
+
+  if (loading) return <ActivityIndicator size="large" color="#0000ff" />;
+  if (error) return <Text>Error fetching repository</Text>;
+
+  const repository = data.repository;
+
+  return (
+    <View>
+      <RepositoryItem repository={repository} onOpen={openInGitHub} />
+    </View>
+  );
+};
+
+// RepositoryList component to display a list of repositories
+const RepositoryList = ({ repositories, navigation }) => (
+  <FlatList
+    data={repositories.edges}
+    keyExtractor={({ node }) => node.id}
+    renderItem={({ item }) => (
+      <Pressable onPress={() => navigation.navigate('SingleRepository', { id: item.node.id })}>
+        <RepositoryItem repository={item.node} />
+      </Pressable>
+    )}
+  />
+);
+
+// Main App component
+const Stack = createNativeStackNavigator();
+
+const App = () => {
+  const client = new ApolloClient({
+    uri: 'https://us-central1-enhanced-cursor-430619-e5.cloudfunctions.net/myGraphQLFunction',
+    cache: new InMemoryCache(),
+  });
+
+  // Dummy data for demonstration purposes (should ideally come from an Apollo query)
+  const repositories = {
+    totalCount: 2,
+    edges: [
+      {
+        node: {
+          id: 'jaredpalmer.formik',
+          fullName: 'jaredpalmer/formik',
+          description: 'Build forms in React, without the tears',
+          language: 'TypeScript',
+          forksCount: 1619,
+          stargazersCount: 21856,
+          ratingAverage: 88,
+          reviewCount: 3,
+          url: 'https://github.com/jaredpalmer/formik',
+        },
+      },
+      {
+        node: {
+          id: 'async-library.react-async',
+          fullName: 'async-library/react-async',
+          description: 'Flexible promise-based React data loader',
+          language: 'JavaScript',
+          forksCount: 69,
+          stargazersCount: 1760,
+          ratingAverage: 72,
+          reviewCount: 3,
+          url: 'https://github.com/async-library/react-async',
+        },
+      },
+    ],
+  };
+
+  return (
+    <ApolloProvider client={client}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Home">
+          <Stack.Screen name="Home">
+            {(props) => <RepositoryList {...props} repositories={repositories} />}
+          </Stack.Screen>
+          <Stack.Screen name="SingleRepository" component={SingleRepositoryView} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ApolloProvider>
+  );
+};
+
+export default App;
