@@ -1,0 +1,201 @@
+import React, { useState } from 'react';
+import { View, TextInput, Button, StyleSheet, Text, Alert, Image, ScrollView } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import * as Linking from 'expo-linking';
+
+// Mock repository data
+const repositories = [
+  { 
+    id: '1', 
+    fullName: 'jaredpalmer/formik', 
+    url: 'https://github.com/jaredpalmer/formik',
+    description: 'Build forms in React, without the tears.',
+    stars: 15000,
+    forks: 2000,
+    reviews: 300,
+    imageUrl: 'https://via.placeholder.com/150' // Replace with actual image URL
+  },
+  { 
+    id: '2', 
+    fullName: 'facebook/react', 
+    url: 'https://github.com/facebook/react',
+    description: 'A declarative, efficient, and flexible JavaScript library for building user interfaces.',
+    stars: 200000,
+    forks: 40000,
+    reviews: 5000,
+    imageUrl: 'https://via.placeholder.com/150' // Replace with actual image URL
+  },
+];
+
+// Create Stack Navigator
+const Stack = createStackNavigator();
+
+// Home Screen Component
+function HomeScreen({ navigation }) {
+  return (
+    <View style={styles.homeContainer}>
+      <Text style={styles.title}>Repository List</Text>
+      {repositories.map(repo => (
+        <Button
+          key={repo.id}
+          title={repo.fullName}
+          onPress={() => navigation.navigate('Repository', { repoId: repo.id })}
+        />
+      ))}
+    </View>
+  );
+}
+
+// SignIn Screen Component
+function SignInScreen() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = () => {
+    const values = { username, password };
+    console.log(values); // Logs form values when submitted
+    Alert.alert(`Username: ${username}, Password: ${password}`);
+
+    // Reset the form fields after submission
+    setUsername('');
+    setPassword('');
+  };
+
+  return (
+    <View style={styles.signInContainer}>
+      <Text style={styles.title}>Sign In</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Username"
+        onChangeText={setUsername}
+        value={username}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        secureTextEntry
+        onChangeText={setPassword}
+        value={password}
+      />
+      <Button title="Sign In" onPress={handleSubmit} />
+    </View>
+  );
+}
+
+// Repository View Component
+function RepositoryView({ route }) {
+  const { repoId } = route.params;
+  const repository = repositories.find(repo => repo.id === repoId); // Mock fetching from Apollo Client
+
+  const openGitHub = () => {
+    Linking.openURL(repository.url);
+  };
+
+  return (
+    <ScrollView style={styles.repoContainer}>
+      <Text style={styles.title}>{repository.fullName}</Text>
+      <Image source={{ uri: repository.imageUrl }} style={styles.repoImage} />
+      <Text style={styles.description}>{repository.description}</Text>
+      <Text style={styles.stats}>Stars: {repository.stars}</Text>
+      <Text style={styles.stats}>Forks: {repository.forks}</Text>
+      <Text style={styles.stats}>Reviews: {repository.reviews}</Text>
+      <Button title="Open on GitHub" onPress={openGitHub} />
+    </ScrollView>
+  );
+}
+
+// Main App Function
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen 
+          name="Home" 
+          component={HomeScreen} 
+          options={{ headerTitle: () => <Header /> }} 
+        />
+        <Stack.Screen name="Sign In" component={SignInScreen} />
+        <Stack.Screen name="Repository" component={RepositoryView} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+// Header Component with Logo
+const Header = () => (
+  <View style={styles.header}>
+    <Image 
+      source={{ uri: 'https://via.placeholder.com/50' }} // Replace with your image URL
+      style={styles.logo}
+    />
+    <Text style={styles.headerTitle}>My App</Text>
+  </View>
+);
+
+// Styles
+const styles = StyleSheet.create({
+  homeContainer: {
+    padding: 20,
+    justifyContent: 'center',
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  signInContainer: {
+    padding: 20,
+    justifyContent: 'center',
+    flex: 1,
+    backgroundColor: '#f8f8f8',
+  },
+  repoContainer: {
+    padding: 20,
+    justifyContent: 'center',
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+  },
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#333333',
+  },
+  description: {
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: 'center',
+    color: '#555555',
+  },
+  stats: {
+    fontSize: 16,
+    marginBottom: 5,
+    textAlign: 'center',
+    color: '#333333',
+  },
+  repoImage: {
+    width: '100%',
+    height: 150,
+    marginBottom: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f1f1f',
+    padding: 10,
+  },
+  headerTitle: {
+    color: '#f0edf6',
+    fontSize: 20,
+    marginLeft: 10,
+  },
+  logo: {
+    width: 50,
+    height: 50,
+  },
