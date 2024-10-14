@@ -1,0 +1,142 @@
+import React, { useState } from 'react';
+import { View, TextInput, Button, StyleSheet, Text } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useMutation, gql } from '@apollo/client';
+
+// GraphQL mutation to create a review
+const CREATE_REVIEW = gql`
+  mutation CreateReview($repositoryName: String!, $ownerName: String!, $rating: Int!, $text: String) {
+    createReview(review: { repositoryName: $repositoryName, ownerName: $ownerName, rating: $rating, text: $text }) {
+      id
+    }
+  }
+`;
+
+// Review Form Component
+const ReviewForm = ({ navigation }) => {
+  const [ownerName, setOwnerName] = useState('');
+  const [repositoryName, setRepositoryName] = useState('');
+  const [rating, setRating] = useState('');
+  const [text, setText] = useState('');
+
+  const [error, setError] = useState('');
+
+  const [createReview] = useMutation(CREATE_REVIEW);
+
+  const handleSubmit = async () => {
+    // Validate inputs
+    if (!ownerName || !repositoryName || !rating) {
+      setError('All fields are required');
+      return;
+    }
+
+    const ratingNum = parseInt(rating, 10);
+    if (isNaN(ratingNum) || ratingNum < 0 || ratingNum > 100) {
+      setError('Rating must be a number between 0 and 100');
+      return;
+    }
+
+    try {
+      await createReview({
+        variables: {
+          ownerName,
+          repositoryName,
+          rating: ratingNum,
+          text,
+        },
+      });
+
+      // Navigate to the repository view after successful submission
+      navigation.navigate('SingleRepository', { id: `${ownerName}.${repositoryName}` });
+      
+      // Reset form fields
+      setOwnerName('');
+      setRepositoryName('');
+      setRating('');
+      setText('');
+      setError('');
+    } catch (e) {
+      console.error('Error creating review:', e);
+      setError('Failed to create review');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Repository Owner's Username"
+        value={ownerName}
+        onChangeText={setOwnerName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Repository Name"
+        value={repositoryName}
+        onChangeText={setRepositoryName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Rating (0-100)"
+        value={rating}
+        keyboardType="numeric"
+        onChangeText={setRating}
+      />
+      <TextInput
+        style={[styles.input, styles.textArea]}
+        placeholder="Review"
+        value={text}
+        multiline
+        onChangeText={setText}
+      />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <Button title="Submit Review" onPress={handleSubmit} />
+    </View>
+  );
+};
+
+// Home Screen Component
+const HomeScreen = ({ navigation }) => (
+  <View style={styles.container}>
+    <Text>Welcome to the Home Screen!</Text>
+    <Button title="Go to Create Review" onPress={() => navigation.navigate('CreateReview')} />
+  </View>
+);
+
+// Tab Navigator Component
+const Tab = createBottomTabNavigator();
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator>
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="CreateReview" component={ReviewForm} />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
+
+// Styles for the components
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  textArea: {
+    height: 100, // Height for multi-line text area
+  },
+  error: {
+    color: 'red',
+    marginBottom: 10,
+  },
+});
