@@ -1,0 +1,140 @@
+import React from 'react';
+import { View, Text, Button, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { useQuery, gql } from '@apollo/client';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import * as Linking from 'expo-linking';
+import { useNavigation, useRoute } from '@react-navigation/native';
+
+// GraphQL query to fetch a single repository by its ID
+const GET_REPOSITORY = gql`
+  query GetRepository($id: ID!) {
+    repository(id: $id) {
+      id
+      fullName
+      url
+      description
+      language
+      forksCount
+      stargazersCount
+      ratingAverage
+      reviewCount
+      ownerAvatarUrl
+    }
+  }
+`;
+
+// Component for displaying the repository item
+const RepositoryItem = ({ repository, showGitHubButton }) => {
+  return (
+    <View style={styles.repositoryContainer}>
+      <Text style={styles.fullName}>{repository.fullName}</Text>
+      <Text>{repository.description}</Text>
+      <Text>Language: {repository.language}</Text>
+      <Text>Stars: {repository.stargazersCount}</Text>
+      <Text>Forks: {repository.forksCount}</Text>
+      <Text>Rating: {repository.ratingAverage}</Text>
+      <Text>Reviews: {repository.reviewCount}</Text>
+
+      {showGitHubButton && (
+        <Button title="Open in GitHub" onPress={() => Linking.openURL(repository.url)} />
+      )}
+    </View>
+  );
+};
+
+// Single repository view component
+const SingleRepositoryView = () => {
+  const route = useRoute(); // Get the repository ID from the route params
+  const { id } = route.params;
+  const { data, loading, error } = useQuery(GET_REPOSITORY, {
+    variables: { id },
+  });
+
+  if (loading) return <ActivityIndicator />;
+  if (error) return <Text>Error loading repository</Text>;
+
+  return <RepositoryItem repository={data.repository} showGitHubButton={true} />;
+};
+
+// Component for listing repositories and navigating to the single repository view
+const RepositoryList = ({ repositories }) => {
+  const navigation = useNavigation();
+
+  const renderItem = ({ item }) => (
+    <Pressable onPress={() => navigation.navigate('Repository', { id: item.id })}>
+      <RepositoryItem repository={item} showGitHubButton={false} />
+    </Pressable>
+  );
+
+  return (
+    <FlatList
+      data={repositories}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.id}
+    />
+  );
+};
+
+// Sample repository data for testing
+const repositories = [
+  {
+    id: '1',
+    fullName: 'jaredpalmer.formik',
+    description: 'Build forms in React, without tears',
+    language: 'TypeScript',
+    stargazersCount: 21500,
+    forksCount: 1500,
+    ratingAverage: 90,
+    reviewCount: 10,
+    ownerAvatarUrl: 'https://avatars.githubusercontent.com/u/4060187?v=4',
+    url: 'https://github.com/jaredpalmer/formik',
+  },
+  {
+    id: '2',
+    fullName: 'rails/rails',
+    description: 'Ruby on Rails framework',
+    language: 'Ruby',
+    stargazersCount: 50000,
+    forksCount: 20000,
+    ratingAverage: 85,
+    reviewCount: 50,
+    ownerAvatarUrl: 'https://avatars.githubusercontent.com/u/4223?v=4',
+    url: 'https://github.com/rails/rails',
+  },
+];
+
+// Stack Navigator setup
+const Stack = createStackNavigator();
+
+const App = () => {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="Repositories" options={{ title: 'Repositories' }}>
+          {() => <RepositoryList repositories={repositories} />}
+        </Stack.Screen>
+        <Stack.Screen name="Repository" component={SingleRepositoryView} options={{ title: 'Repository Details' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 10,
+  },
+  repositoryContainer: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginBottom: 10,
+  },
+  fullName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
+
+export default App;
