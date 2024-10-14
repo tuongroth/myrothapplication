@@ -1,0 +1,150 @@
+import React, { useState } from 'react';
+import { View, TextInput, Button, StyleSheet, Text, Alert, FlatList, Image } from 'react-native';
+import { ApolloClient, InMemoryCache, ApolloProvider, useQuery, gql } from '@apollo/client';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useDebounce } from 'use-debounce';
+import { Linking } from 'expo';
+
+// Initialize Apollo Client
+const client = new ApolloClient({
+  uri: 'https://your-graphql-endpoint.com/graphql', // Replace with your actual GraphQL endpoint
+  cache: new InMemoryCache(),
+});
+
+// GraphQL Queries
+const GET_REPOSITORIES = gql`
+  query GetRepositories($searchKeyword: String) {
+    repositories(searchKeyword: $searchKeyword) {
+      edges {
+        node {
+          id
+          fullName
+          url
+          reviews {
+            edges {
+              node {
+                id
+                text
+                rating
+                createdAt
+                user {
+                  username
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+const RepositoryList = () => {
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [debouncedSearch] = useDebounce(searchKeyword, 500);
+  const { loading, error, data } = useQuery(GET_REPOSITORIES, {
+    variables: { searchKeyword: debouncedSearch },
+  });
+
+  if (loading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error: {error.message}</Text>;
+
+  const repositories = data.repositories.edges;
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Search repositories..."
+        value={searchKeyword}
+        onChangeText={setSearchKeyword}
+      />
+      <FlatList
+        data={repositories}
+        keyExtractor={({ node }) => node.id}
+        renderItem={({ item }) => (
+          <View style={styles.repositoryItem}>
+            <Text>{item.node.fullName}</Text>
+            <Button title="View" onPress={() => Linking.openURL(item.node.url)} />
+          </View>
+        )}
+      />
+    </View>
+  );
+};
+
+const SingleRepository = ({ route }) => {
+  const { id } = route.params;
+  const { loading, error, data } = useQuery(GET_REPOSITORIES, {
+    variables: { searchKeyword: id },
+  });
+
+  if (loading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error: {error.message}</Text>;
+
+  const repository = data.repositories.edges[0].node;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>{repository.fullName}</Text>
+      <Button title="Open in GitHub" onPress={() => Linking.openURL(repository.url)} />
+      <FlatList
+        data={repository.reviews.edges}
+        keyExtractor={({ node }) => node.id}
+        renderItem={({ item }) => (
+          <View style={styles.reviewItem}>
+            <Text>{item.node.user.username}: {item.node.text} ({item.node.rating})</Text>
+          </View>
+        )}
+      />
+    </View>
+  );
+};
+
+// Navigation Setup
+const Tab = createBottomTabNavigator();
+
+const App = () => {
+  return (
+    <ApolloProvider client={client}>
+      <NavigationContainer>
+        <Tab.Navigator>
+          <Tab.Screen name="Repositories" component={RepositoryList} />
+          <Tab.Screen name="Single Repository" component={SingleRepository} />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </ApolloProvider>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  repositoryItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  reviewItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+});
+
+export default App;
