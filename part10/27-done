@@ -1,0 +1,125 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, Button, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { ApolloClient, InMemoryCache, ApolloProvider, useQuery, gql } from '@apollo/client';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+
+const Stack = createStackNavigator();
+
+const client = new ApolloClient({
+  uri: 'YOUR_GRAPHQL_API_URL', // Replace with your GraphQL API URL
+  cache: new InMemoryCache(),
+});
+
+// GraphQL Queries
+const GET_REPOSITORY_REVIEWS = gql`
+  query getRepositoryReviews($id: ID!, $first: Int, $after: String) {
+    repository(id: $id) {
+      id
+      fullName
+      reviews(first: $first, after: $after) {
+        totalCount
+        edges {
+          node {
+            id
+            text
+            rating
+            createdAt
+            user {
+              username
+            }
+          }
+          cursor
+        }
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+      }
+    }
+  }
+`;
+
+const RepositoryReviews = ({ route }) => {
+  const { repoId } = route.params;
+  const [reviews, setReviews] = useState([]);
+  const [cursor, setCursor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [hasNextPage, setHasNextPage] = useState(true);
+
+  const { data, loading: queryLoading, error } = useQuery(GET_REPOSITORY_REVIEWS, {
+    variables: { id: repoId, first: 2, after: cursor },
+    onCompleted: (data) => {
+      const fetchedReviews = data.repository.reviews.edges;
+      setReviews((prevReviews) => [...prevReviews, ...fetchedReviews]);
+      setHasNextPage(data.repository.reviews.pageInfo.hasNextPage);
+      setCursor(data.repository.reviews.pageInfo.endCursor);
+      setLoading(false);
+    },
+  });
+
+  const loadMoreReviews = () => {
+    if (hasNextPage) {
+      setLoading(true);
+    }
+  };
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert("Error", `Failed to fetch reviews: ${error.message}`);
+      setLoading(false);
+    }
+  }, [error]);
+
+  const renderReview = ({ item }) => (
+    <View>
+      <Text>Review: "{item.node.text}"</Text>
+      <Text>Rating: {item.node.rating}</Text>
+      <Text>Date: {new Date(item.node.createdAt).toLocaleDateString()}</Text>
+      <Text>User: {item.node.user.username}</Text>
+      <Text>-----------------------------------</Text>
+    </View>
+  );
+
+  return (
+    <View style={{ padding: 20 }}>
+      {queryLoading && <ActivityIndicator size="large" color="#0000ff" />}
+      <FlatList
+        data={reviews}
+        renderItem={renderReview}
+        keyExtractor={(item) => item.node.id}
+        onEndReached={loadMoreReviews}
+        onEndReachedThreshold={0.1}
+        ListFooterComponent={loading && <ActivityIndicator size="small" color="#0000ff" />}
+      />
+    </View>
+  );
+};
+
+const HomeScreen = ({ navigation }) => {
+  const handleViewReviews = () => {
+    navigation.navigate('RepositoryReviews', { repoId: 'jaredpalmer.formik' }); // Replace with the actual repo ID
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 24 }}>Repository</Text>
+      <Button title="View Reviews" onPress={handleViewReviews} />
+    </View>
+  );
+};
+
+const App = () => {
+  return (
+    <ApolloProvider client={client}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Home">
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="RepositoryReviews" component={RepositoryReviews} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ApolloProvider>
+  );
+};
+
+export default App;
