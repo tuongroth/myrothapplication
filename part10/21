@@ -1,0 +1,210 @@
+import React from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, Pressable, Linking, Button } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { gql, useQuery } from '@apollo/client';
+
+// Define Tab Navigator
+const Tab = createBottomTabNavigator();
+
+// GraphQL query to get repository details along with reviews
+const REPOSITORY_DETAILS = gql`
+  query ($id: ID!) {
+    repository(id: $id) {
+      id
+      fullName
+      url
+      description
+      stargazersCount
+      forksCount
+      reviewCount
+      ratingAverage
+      reviews {
+        edges {
+          node {
+            id
+            text
+            rating
+            createdAt
+            user {
+              id
+              username
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+// Component to display repository info
+const RepositoryInfo = ({ repository }) => {
+  return (
+    <View style={styles.repositoryInfo}>
+      <Text style={styles.repositoryName}>{repository.fullName}</Text>
+      <Text style={styles.repositoryDescription}>{repository.description}</Text>
+      <View style={styles.statsContainer}>
+        <Text style={styles.stat}>Stars: {repository.stargazersCount}</Text>
+        <Text style={styles.stat}>Forks: {repository.forksCount}</Text>
+        <Text style={styles.stat}>Reviews: {repository.reviewCount}</Text>
+        <Text style={styles.stat}>Rating: {repository.ratingAverage}</Text>
+      </View>
+      <Pressable
+        style={styles.button}
+        onPress={() => Linking.openURL(repository.url)}
+      >
+        <Text style={styles.buttonText}>Open in GitHub</Text>
+      </Pressable>
+    </View>
+  );
+};
+
+// Component to display individual reviews
+const ReviewItem = ({ review }) => {
+  return (
+    <View style={styles.reviewItem}>
+      <View style={styles.ratingContainer}>
+        <Text style={styles.ratingText}>{review.rating}</Text>
+      </View>
+      <View style={styles.reviewTextContainer}>
+        <Text style={styles.username}>{review.user.username}</Text>
+        <Text style={styles.createdAt}>
+          {new Date(review.createdAt).toLocaleDateString()}
+        </Text>
+        <Text style={styles.reviewText}>{review.text}</Text>
+      </View>
+    </View>
+  );
+};
+
+// Main component for displaying single repository and reviews
+const SingleRepository = ({ route }) => {
+  // Check route params
+  console.log('Route params:', route.params); // Debugging line to see params
+
+  const { id } = route.params; // Get repository ID from route params
+
+  const { loading, error, data } = useQuery(REPOSITORY_DETAILS, {
+    variables: { id },
+  });
+
+  if (loading) return <Text>Loading...</Text>;
+  if (error) {
+    Alert.alert('Error fetching repository data', error.message);
+    return null;
+  }
+
+  const repository = data.repository;
+  const reviews = repository.reviews.edges.map(edge => edge.node);
+
+  return (
+    <FlatList
+      data={reviews}
+      renderItem={({ item }) => <ReviewItem review={item} />}
+      keyExtractor={({ id }) => id}
+      ListHeaderComponent={() => <RepositoryInfo repository={repository} />}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+    />
+  );
+};
+
+// Home Screen with button to navigate to SingleRepository
+const HomeScreen = ({ navigation }) => {
+  const navigateToRepository = () => {
+    // Dummy repository ID for navigation
+    const repositoryId = "jaredpalmer.formik"; // Replace this with a valid repository ID
+    navigation.navigate('SingleRepository', { id: repositoryId });
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text>Home Screen</Text>
+      <Button title="Go to Repository" onPress={navigateToRepository} />
+    </View>
+  );
+};
+
+// App Component with Navigation
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator>
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="SingleRepository" component={SingleRepository} />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
+
+// Styles for the components
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  repositoryInfo: {
+    padding: 20,
+  },
+  repositoryName: {
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  repositoryDescription: {
+    fontSize: 16,
+    marginVertical: 10,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  stat: {
+    fontSize: 14,
+  },
+  button: {
+    backgroundColor: '#007bff',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  reviewItem: {
+    flexDirection: 'row',
+    padding: 10,
+    alignItems: 'center',
+  },
+  ratingContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffcc00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  ratingText: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  reviewTextContainer: {
+    flex: 1,
+  },
+  username: {
+    fontWeight: 'bold',
+  },
+  createdAt: {
+    color: 'gray',
+    fontSize: 12,
+  },
+  reviewText: {
+    marginTop: 5,
+  },
+  separator: {
+    height: 10,
+    backgroundColor: '#f0f0f0',
+  },
+});
