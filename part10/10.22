@@ -1,0 +1,139 @@
+import React, { useState } from 'react';
+import { View, TextInput, Button, StyleSheet, Text, Alert } from 'react-native';
+import { ApolloProvider, ApolloClient, InMemoryCache, useMutation, gql } from '@apollo/client';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Picker } from '@react-native-picker/picker';
+
+// Apollo Client Setup
+const client = new ApolloClient({
+  uri: 'YOUR_GRAPHQL_ENDPOINT', // Your GraphQL endpoint
+  cache: new InMemoryCache(),
+});
+
+// GraphQL mutation for creating a user
+const CREATE_USER = gql`
+  mutation CreateUser($username: String!, $password: String!) {
+    createUser(username: $username, password: $password) {
+      id
+    }
+  }
+`;
+
+// Sign-Up Form Component
+const SignUpForm = ({ navigation }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [error, setError] = useState('');
+
+  const [createUser] = useMutation(CREATE_USER);
+
+  const handleSubmit = async () => {
+    if (username.length < 5 || username.length > 30) {
+      setError('Username must be between 5 and 30 characters.');
+      return;
+    }
+    if (password.length < 5 || password.length > 50) {
+      setError('Password must be between 5 and 50 characters.');
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError('Password confirmation does not match.');
+      return;
+    }
+
+    try {
+      await createUser({ variables: { username, password } });
+      Alert.alert('User created successfully!');
+      navigation.navigate('ReviewedRepositories'); // Navigate to reviewed repositories after sign-up
+    } catch (e) {
+      console.error('Error creating user:', e);
+      setError('Failed to create user.');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Username"
+        value={username}
+        onChangeText={setUsername}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Confirm Password"
+        secureTextEntry
+        value={passwordConfirmation}
+        onChangeText={setPasswordConfirmation}
+      />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <Button title="Sign Up" onPress={handleSubmit} />
+    </View>
+  );
+};
+
+// Repository List Component
+const RepositoryList = ({ sortOrder, setSortOrder }) => {
+  return (
+    <View style={styles.container}>
+      <Text>Reviewed Repositories List</Text>
+      <Picker
+        selectedValue={sortOrder}
+        onValueChange={(itemValue) => setSortOrder(itemValue)}
+      >
+        <Picker.Item label="Latest Repositories" value="CREATED_AT" />
+        <Picker.Item label="Highest Rated Repositories" value="RATING_AVERAGE" />
+        <Picker.Item label="Lowest Rated Repositories" value="RATING_AVERAGE_DESC" />
+      </Picker>
+      {/* Add FlatList to display repositories here */}
+    </View>
+  );
+};
+
+// Main Application Component
+const Tab = createBottomTabNavigator();
+
+export default function App() {
+  const [sortOrder, setSortOrder] = useState('CREATED_AT');
+
+  return (
+    <ApolloProvider client={client}>
+      <NavigationContainer>
+        <Tab.Navigator>
+          <Tab.Screen name="Sign Up" component={SignUpForm} />
+          <Tab.Screen name="ReviewedRepositories">
+            {() => <RepositoryList sortOrder={sortOrder} setSortOrder={setSortOrder} />}
+          </Tab.Screen>
+        </Tab.Navigator>
+      </NavigationContainer>
+    </ApolloProvider>
+  );
+}
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  error: {
+    color: 'red',
+  },
+});
