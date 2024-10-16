@@ -18,3 +18,72 @@ Validating /workspaces/full-stack-open-pokedex/fly.toml
 ==> Building image with Depot
 --> build:  (​)
 
+ex (main) $ flyctl deploy --config fly.toml
+bash: flyctl: command not found
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ git config --global commit.gpgSign
+ false
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ gpg --list-secret-keys --keyid-for
+mat LONG
+gpg: directory '/home/codespace/.gnupg' created
+gpg: keybox '/home/codespace/.gnupg/pubring.kbx' created
+gpg: /home/codespace/.gnupg/trustdb.gpg: trustdb created
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ gpg --list-secret-keys --keyid-for
+mat LONG
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ gpg --daemon
+gpg: invalid option "--daemon"
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ gpg --daemon
+gpg: invalid option "--daemon"
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ flyctl auth token
+bash: flyctl: command not found
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ dist
+bash: dist: command not found
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ gpg --daemon
+gpg: invalid option "--daemon"
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ git config user.name
+tuongroth
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ git config user.email
+rothtrancattuong0703@gmail.com
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ ssh -T git@github.com
+git@github.com: Permission denied (publickey).
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ git add .
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ git commit -m "Your commit message
+"
+error: gpg failed to sign the data:
+[GNUPG:] BEGIN_SIGNING
+2024/10/16 12:08:02 error signing commit: error signing commit: error making request: 403 | Author is invalid, Current user User does not have push access to this repository, error making request: 403 | Author is invalid, Current user User does not have push access to this repository
+
+fatal: failed to write commit object
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ ^C
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ git push origin main
+git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ gpg --list-secret-keys --keyid-for
+mat LONG
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ ssh-keygen -t rsa -b 4096 -C "roth
+trancattuong0703@gmail.com"
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/codespace/.ssh/id_rsa): 
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /home/codespace/.ssh/id_rsa
+Your public key has been saved in /home/codespace/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:RGHkvrVqK3YJiFmYZdLPSvICTtgmcrcgceJD8+Ly0lE rothtrancattuong0703@gmail.com
+The key's randomart image is:
++---[RSA 4096]----+
+|   .   .=.       |
+|ooo +  +         |
+|+=o* o  o        |
+|*=O.E oo         |
+|=*o@ +  S .      |
+|.o= = .  o .     |
+|.o o   ....      |
+|. o   o +.       |
+| .   . +o.       |
++----[SHA256]-----+
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $ ^C
+@tuongroth ➜ /workspaces/full-stack-open-pokedex (main) $   cat ~/.ssh/id_rsa.pub
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDqRmtevBjL5N2Q3btR98isz8+nlY+A+rbDAkDUFS4T5fs9T0taDwSUsgaXlI6Ncp1KWMfNLRjFHa8avLhQOhkG4BcGOkJzsx7JfRVhJLAlyFq6PTq39Thj/S7dvsiwkGDMONdJJ3yVZyxzhgNMBJ/2EmcFyPagvsJ2NTA+l/nALare9rCuuSJUdpe+fOXumunjV/qb8EuBQniJTju+vuSc1O6E+tvcDM4Fu+cl6eRlB5yTeG6hdy2Z5vULCoyfjm88lNzUCYcgv5/pCg3rZznbf0ipz9y4yrQumHW0V33TMsc0aa9UjwjZbcYAxQcSd6zRjP7apo1i/5Jk3lEwK/OhAYXWVRUyJ5t1na9FOLYtwqh27Wk4DT/MZhuYTyxV30Rfq81vdjWt7ypV9EFVoRCZql6W/MLTMMxqaBKmQbrAz9lb68Yt/jMvKEzIcv00y2auKGz2gRjb817FDC7FvnW/eqdbTlodHNJfHAbqrG6HHr6CeKhxqEyUJXKpbi0U2Qv+tvl3//PtBKD9UBaguXyvIBWUX237jH71DRskGc02E0pLbvFp0xLLbRr7PNCutB5Rdm7iJ101dlz0oDNOhGMk00hkEvdfSOB4HagWu26BG4ORLsr5xPbz3LpFdmoDLIVdwqtGoW14LftnQJAisAO7gntRPV8fwrudK/UmECTu8Q== rothtrancattuong0703@gmail.com
