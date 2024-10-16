@@ -1,27 +1,20 @@
-name: Deploy to Fly.io
 
-on:
-  push:
-    branches:
-      - main
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+Trung (Giản thể)
+? Do you want to tweak these settings before proceeding? Yes
+failed opening browser. Copy the url (https://fly.io/cli/launch/77346d777936323578786763616e747a7069346770696b736270776c6d707734) into a browser and continue
+Waiting for launch data... Done
+Created app 'full-stack-open-pokedex-fragrant-shape-3745' in organization 'personal'
+Admin URL: https://fly.io/apps/full-stack-open-pokedex-fragrant-shape-3745
+Hostname: full-stack-open-pokedex-fragrant-shape-3745.fly.dev
+FlyV1 fm2_lJPECAAAAAAAB0WWxBCh6GL8pGMCke3uacxgOVl9wrVodHRwczovL2FwaS5mbHkuaW8vdjGWAJLOAAvpjx8Lk7lodHRwczovL2FwaS5mbHkuaW8vYWFhL3YxxDzERt81u7eHAcAJYyFww6wzE03W2z4LQtNdLc8kJfFUgUgPP0uHXbveuIN6hOl1mAcEWjFU2NiNLA7rYlXETtUAsJVM/ZLLanX2Oob8W0DCtxjgeQNoVGfMxhgVlbDftmI+TxjPRpqRu7dn1A37+9qAxo5C/ivQnSuDrFgKmBtYzh9tMF7aeO3CSuWfMg2SlAORgc4ASyIFHwWRgqdidWlsZGVyH6J3Zx8BxCBZsciuHiARrHHEzuO5jwMpWk/d3sk1YYwMe/yZg74s4g==,fm2_lJPETtUAsJVM/ZLLanX2Oob8W0DCtxjgeQNoVGfMxhgVlbDftmI+TxjPRpqRu7dn1A37+9qAxo5C/ivQnSuDrFgKmBtYzh9tMF7aeO3CSuWfMsQQBPYSRYqyZZWu+V+6XGFNZcO5aHR0cHM6Ly9hcGkuZmx5LmlvL2FhYS92MZgEks5nD4DmzwAAAAE9oxb0F84AC5QUCpHOAAuUFAzEEHO8FVfNQgrF1BIyFwVsNw/EIJltZFljDAT43UcwRJuHX3O832XWP49EGBA5qxDhHyzm
+Setting FLY_API_TOKEN secret in GitHub repository settings
+failed setting FLY_API_TOKEN secret in GitHub repository settings: %w exit status 1
+? Overwrite "/workspaces/full-stack-open-pokedex/.github/workflows/fly-deploy.yml"? Yes
+Wrote config file fly.toml
+Validating /workspaces/full-stack-open-pokedex/fly.toml
+✓ Configuration is valid
+==> Building image
+==> Building image with Depot
+--> build:  (​)
 
-    steps:
-      # Step 1: Checkout the code
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      # Step 2: Install flyctl
-      - name: Install flyctl
-        run: |
-          curl -L https://fly.io/install.sh | sh
-          echo "$HOME/.fly/bin" >> $GITHUB_PATH
-
-      # Step 3: Deploy to Fly.io
-      - name: Deploy to Fly.io
-        run: flyctl deploy --config fly.toml --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}  # Ensure you have this secret set up
