@@ -1,0 +1,14 @@
+name: Periodic Health Check
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs once a day at midnight
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check application health
+        uses: wzieba/health-check-action@v2
+        with:
+          url: https://your-application-url.com
