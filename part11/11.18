@@ -1,0 +1,30 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run build
+        run: npm install && npm run build
+
+      - name: Notify Discord of success
+        if: success()
+        uses: discord-webhook-notify@v1.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          message: "Deployment succeeded! 🎉"
+
+      - name: Notify Discord of failure
+        if: failure()
+        uses: discord-webhook-notify@v1.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          message: "Deployment failed! 🚨 Please check the logs for more details."
