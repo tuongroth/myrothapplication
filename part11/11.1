@@ -1,0 +1,22 @@
+name: Deployment pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  simple_deployment_pipeline:
+    runs-on: ubuntu-20.04
+    steps:
+      # Step to check out the repository
+      - uses: actions/checkout@v4
+
+      # Step to set up Node.js version 20
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step to install dependencies using npm
+      - name: Install dependencies
+        run: npm install
