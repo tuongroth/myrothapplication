@@ -1,0 +1,41 @@
+name: Deployment pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  simple_deployment_pipeline:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for #skip in commit messages
+        id: skip_check
+        run: |
+          if git log -1 --pretty=%B | grep -q '#skip'; then
+            echo "::set-output name=skip::true"
+          else
+            echo "::set-output name=skip::false"
+          fi
+
+      - name: Deploy application
+        if: steps.skip_check.outputs.skip == 'false'
+        run: echo "Deploying application"
+
+  tag_release:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.64.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          default_bump: patch
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.skip_check.outputs.skip == 'false' }}
