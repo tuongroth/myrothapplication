@@ -1,0 +1,125 @@
+// 1. Load environment variables and setup express
+require('dotenv').config()
+const express = require('express')
+const { Sequelize, Model, DataTypes } = require('sequelize')
+
+const app = express()
+app.use(express.json())
+
+// 2. Configuration (simulating config.js)
+const PORT = process.env.PORT || 3001
+const DATABASE_URL = process.env.DATABASE_URL || 'sqlite::memory:' // using an in-memory db if not provided
+
+// 3. Database connection (simulating db.js)
+const sequelize = new Sequelize(DATABASE_URL)
+
+const connectToDatabase = async () => {
+  try {
+    await sequelize.authenticate()
+    console.log('Connected to the database')
+  } catch (err) {
+    console.error('Failed to connect to the database:', err)
+    process.exit(1)
+  }
+}
+
+// 4. Define Note model (simulating models/note.js)
+class Note extends Model {}
+
+Note.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  important: {
+    type: DataTypes.BOOLEAN
+  },
+  date: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  sequelize,
+  underscored: true,
+  timestamps: false,
+  modelName: 'note'
+})
+
+// Sync model (simulating models/index.js)
+Note.sync()
+
+// 5. Middleware to find note by ID (noteFinder)
+const noteFinder = async (req, res, next) => {
+  req.note = await Note.findByPk(req.params.id)
+  next()
+}
+
+// 6. Input validation middleware
+const validateNoteInput = (req, res, next) => {
+  const { content, important } = req.body
+  if (typeof content !== 'string' || content.trim() === '') {
+    return res.status(400).json({ error: 'Content is required and must be a string.' })
+  }
+  if (important !== undefined && typeof important !== 'boolean') {
+    return res.status(400).json({ error: 'Important must be a boolean.' })
+  }
+  next()
+}
+
+// 7. Routes (simulating controllers/notes.js)
+app.get('/api/notes', async (req, res) => {
+  const notes = await Note.findAll()
+  res.json(notes)
+})
+
+app.post('/api/notes', validateNoteInput, async (req, res) => {
+  try {
+    const note = await Note.create(req.body)
+    res.status(201).json(note)
+  } catch (error) {
+    res.status(400).json({ error })
+  }
+})
+
+app.get('/api/notes/:id', noteFinder, async (req, res) => {
+  if (req.note) {
+    res.json(req.note)
+  } else {
+    res.status(404).end()
+  }
+})
+
+app.delete('/api/notes/:id', noteFinder, async (req, res) => {
+  if (req.note) {
+    await req.note.destroy()
+    res.status(204).end()
+  } else {
+    res.status(404).end()
+  }
+})
+
+app.put('/api/notes/:id', noteFinder, validateNoteInput, async (req, res) => {
+  if (req.note) {
+    req.note.content = req.body.content
+    req.note.important = req.body.important
+    await req.note.save()
+    res.json(req.note)
+  } else {
+    res.status(404).end()
+  }
+})
+
+// 8. Start the server after ensuring database connection
+const start = async () => {
+  await connectToDatabase()
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+}
+
+start()
