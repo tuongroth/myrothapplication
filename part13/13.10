@@ -1,0 +1,177 @@
+const express = require('express');
+const { Sequelize, DataTypes, Model } = require('sequelize');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const app = express();
+
+app.use(express.json());
+
+// Database setup
+const sequelize = new Sequelize('sqlite::memory:'); // In-memory SQLite DB for testing
+
+// Secret for JWT
+const SECRET = 'supersecretkey';
+
+// User model
+class User extends Model {}
+User.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  username: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+    validate: {
+      isEmail: {
+        msg: "Username must be a valid email"
+      }
+    }
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  passwordHash: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+}, {
+  sequelize,
+  modelName: 'User',
+  timestamps: true
+});
+
+// Note model
+class Note extends Model {}
+Note.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  important: {
+    type: DataTypes.BOOLEAN
+  },
+  date: {
+    type: DataTypes.DATE
+  }
+}, {
+  sequelize,
+  modelName: 'Note',
+  timestamps: true
+});
+
+// Relationships
+User.hasMany(Note);
+Note.belongsTo(User);
+
+// Sync database
+sequelize.sync({ alter: true });
+
+// Middleware to extract and verify token
+const tokenExtractor = (req, res, next) => {
+  const authorization = req.get('authorization');
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    try {
+      req.decodedToken = jwt.verify(authorization.substring(7), SECRET);
+    } catch {
+      return res.status(401).json({ error: 'token invalid' });
+    }
+  } else {
+    return res.status(401).json({ error: 'token missing' });
+  }
+  next();
+};
+
+// User routes
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username, name, password } = req.body;
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, name, passwordHash });
+    res.status(201).json(user);
+  } catch (error) {
+    return res.status(400).json({ error: error.errors.map(err => err.message) });
+  }
+});
+
+app.get('/api/users', async (req, res) => {
+  const users = await User.findAll({
+    include: {
+      model: Note,
+      attributes: { exclude: ['userId'] }
+    }
+  });
+  res.json(users);
+});
+
+app.put('/api/users/:username', async (req, res) => {
+  const user = await User.findOne({ where: { username: req.params.username } });
+  if (user) {
+    user.username = req.body.username || user.username;
+    await user.save();
+    res.json(user);
+  } else {
+    res.status(404).json({ error: 'user not found' });
+  }
+});
+
+// Login route
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ where: { username } });
+
+  const passwordCorrect = user && await bcrypt.compare(password, user.passwordHash);
+
+  if (!(user && passwordCorrect)) {
+    return res.status(401).json({ error: 'invalid username or password' });
+  }
+
+  const userForToken = {
+    id: user.id,
+    username: user.username
+  };
+
+  const token = jwt.sign(userForToken, SECRET);
+
+  res.status(200).send({ token, username: user.username, name: user.name });
+});
+
+// Notes routes
+app.post('/api/notes', tokenExtractor, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.decodedToken.id);
+    const note = await Note.create({
+      ...req.body,
+      userId: user.id,
+      date: new Date()
+    });
+    res.json(note);
+  } catch (error) {
+    return res.status(400).json({ error: 'error creating note' });
+  }
+});
+
+app.get('/api/notes', async (req, res) => {
+  const notes = await Note.findAll({
+    attributes: { exclude: ['userId'] },
+    include: {
+      model: User,
+      attributes: ['name']
+    }
+  });
+  res.json(notes);
+});
+
+// Start the server
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
