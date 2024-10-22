@@ -1,0 +1,148 @@
+const express = require('express');
+const { Sequelize, Model, DataTypes } = require('sequelize');
+const jwt = require('jsonwebtoken');
+
+// Configuration
+const SECRET = 'mysecret';
+const sequelize = new Sequelize('sqlite::memory:'); // For simplicity, we use an in-memory SQLite database
+
+// User Model
+class User extends Model {}
+User.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  username: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+}, {
+  sequelize,
+  underscored: true,
+  timestamps: true, // Enable timestamps
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  modelName: 'user',
+});
+
+// Express App
+const app = express();
+app.use(express.json());
+
+// Middleware for extracting token
+const tokenExtractor = (req, res, next) => {
+  const authorization = req.get('authorization');
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    try {
+      req.decodedToken = jwt.verify(authorization.substring(7), SECRET);
+    } catch {
+      return res.status(401).json({ error: 'token invalid' });
+    }
+  } else {
+    return res.status(401).json({ error: 'token missing' });
+  }
+  next();
+};
+
+// Routes
+
+// Get all users
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: { exclude: ['updated_at'] },
+    });
+    res.json(users);
+  } catch (error) {
+    console.error('Error retrieving users:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Create a new user
+app.post('/api/users', async (req, res) => {
+  const { username, name } = req.body;
+
+  // Validate input
+  if (!username || !name) {
+    return res.status(400).json({ error: 'Username and name are required.' });
+  }
+
+  try {
+    const user = await User.create({ username, name });
+    res.status(201).json(user);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return res.status(400).json({ error: 'Failed to create user' });
+  }
+});
+
+// Update a username
+app.put('/api/users/:username', async (req, res) => {
+  const { username } = req.params;
+  const { newUsername } = req.body;
+
+  // Validate input
+  if (!newUsername) {
+    return res.status(400).json({ error: 'New username is required.' });
+  }
+
+  try {
+    const user = await User.findOne({ where: { username } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    user.username = newUsername;
+    await user.save();
+    res.json(user);
+  } catch (error) {
+    console.error('Error updating username:', error);
+    return res.status(400).json({ error: 'Failed to update username' });
+  }
+});
+
+// Login route to simulate token-based login (for testing)
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = await User.findOne({ where: { username } });
+
+  const passwordCorrect = password === 'secret'; // Simple password check
+
+  if (!(user && passwordCorrect)) {
+    return res.status(401).json({ error: 'invalid username or password' });
+  }
+
+  const userForToken = {
+    username: user.username,
+    id: user.id,
+  };
+
+  const token = jwt.sign(userForToken, SECRET);
+
+  res.status(200).send({ token, username: user.username, name: user.name });
+});
+
+// Start the server and sync database
+const start = async () => {
+  try {
+    await sequelize.sync({ force: true }); // Synchronize models with the database
+    console.log('Database synced!');
+
+    app.listen(3001, () => {
+      console.log('Server running on port 3001');
+    });
+  } catch (error) {
+    console.error('Error starting server:', error);
+  }
+};
+
+start();
