@@ -1,0 +1,185 @@
+const express = require('express');
+const { Sequelize, DataTypes, Model } = require('sequelize');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const app = express();
+
+app.use(express.json());
+
+// Database setup (using SQLite in-memory database for simplicity)
+const sequelize = new Sequelize('sqlite::memory:');
+
+// JWT secret key
+const SECRET = 'supersecretkey';
+
+// User model definition
+class User extends Model {}
+User.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  username: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+    validate: {
+      isEmail: {
+        msg: "Username must be a valid email"
+      }
+    }
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  passwordHash: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+}, {
+  sequelize,
+  modelName: 'User',
+  timestamps: true
+});
+
+// Note (Blog) model definition
+class Note extends Model {}
+Note.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  important: {
+    type: DataTypes.BOOLEAN
+  },
+  date: {
+    type: DataTypes.DATE
+  }
+}, {
+  sequelize,
+  modelName: 'Note',
+  timestamps: true
+});
+
+// Defining relationships between User and Note
+User.hasMany(Note);
+Note.belongsTo(User);
+
+// Sync database
+sequelize.sync({ alter: true });
+
+// Middleware to extract token
+const tokenExtractor = (req, res, next) => {
+  const authorization = req.get('authorization');
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    try {
+      req.decodedToken = jwt.verify(authorization.substring(7), SECRET);
+    } catch {
+      return res.status(401).json({ error: 'token invalid' });
+    }
+  } else {
+    return res.status(401).json({ error: 'token missing' });
+  }
+  next();
+};
+
+// User registration route
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username, name, password } = req.body;
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, name, passwordHash });
+    res.status(201).json(user);
+  } catch (error) {
+    return res.status(400).json({ error: error.errors.map(err => err.message) });
+  }
+});
+
+// User login route
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ where: { username } });
+
+  const passwordCorrect = user && await bcrypt.compare(password, user.passwordHash);
+
+  if (!(user && passwordCorrect)) {
+    return res.status(401).json({ error: 'invalid username or password' });
+  }
+
+  const userForToken = {
+    id: user.id,
+    username: user.username
+  };
+
+  const token = jwt.sign(userForToken, SECRET);
+
+  res.status(200).send({ token, username: user.username, name: user.name });
+});
+
+// Route to create a note (blog post), linked to the logged-in user
+app.post('/api/notes', tokenExtractor, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.decodedToken.id);
+    const note = await Note.create({
+      ...req.body,
+      userId: user.id,
+      date: new Date()
+    });
+    res.json(note);
+  } catch (error) {
+    return res.status(400).json({ error: 'error creating note' });
+  }
+});
+
+// Route to delete a note, only allowed by the creator of the note
+app.delete('/api/notes/:id', tokenExtractor, async (req, res) => {
+  const note = await Note.findByPk(req.params.id);
+
+  if (!note) {
+    return res.status(404).json({ error: 'note not found' });
+  }
+
+  // Check if the logged-in user is the owner of the note
+  if (note.userId !== req.decodedToken.id) {
+    return res.status(403).json({ error: 'only the creator can delete this note' });
+  }
+
+  await note.destroy();
+  res.status(204).end();
+});
+
+// Route to get all notes (blogs) including the user who added each one
+app.get('/api/notes', async (req, res) => {
+  const notes = await Note.findAll({
+    attributes: { exclude: ['userId'] },
+    include: {
+      model: User,
+      attributes: ['name', 'username'] // Show the name and email (username) of the user who added each note
+    }
+  });
+  res.json(notes);
+});
+
+// Route to get all users including the blogs they have added
+app.get('/api/users', async (req, res) => {
+  const users = await User.findAll({
+    include: {
+      model: Note,
+      attributes: ['id', 'content', 'important', 'date'] // Show each user's blogs (notes)
+    }
+  });
+  res.json(users);
+});
+
+// Start the server
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
