@@ -1,0 +1,170 @@
+const express = require('express');
+const { Sequelize, DataTypes, Model } = require('sequelize');
+const jwt = require('jsonwebtoken');
+
+// Initialize the app and database connection
+const app = express();
+app.use(express.json());
+
+const sequelize = new Sequelize('sqlite::memory:'); // In-memory SQLite for demo purposes
+
+// Secret for JWT token (replace with your actual secret in production)
+const SECRET = 'your_jwt_secret_key';  // This must match the key used to sign the token
+
+// Hardcoded token (for demo purposes)
+const HARDCODED_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Imx5bngiLCJpZCI6MiwiaWF0IjoxNjMzOTYxOTY4fQ.176gUskMbCEo02QMxqZjFlymzv_GQtIQajHCbXJVX1Q';
+
+// Define the User model
+class User extends Model {}
+User.init({
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  }
+}, { sequelize, modelName: 'user' });
+
+// Define the Blog model
+class Blog extends Model {}
+Blog.init({
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  author: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  url: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  likes: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  year: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  }
+}, { sequelize, modelName: 'blog' });
+
+// Define the ReadingList model (join table)
+class ReadingList extends Model {}
+ReadingList.init({
+  read: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  }
+}, { sequelize, modelName: 'readinglist' });
+
+// Define associations
+User.belongsToMany(Blog, { through: ReadingList });
+Blog.belongsToMany(User, { through: ReadingList });
+
+// Sync the database
+sequelize.sync();
+
+// Middleware to verify the hardcoded token
+const verifyHardcodedToken = (req, res, next) => {
+  const token = HARDCODED_TOKEN;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token missing or invalid' });
+  }
+
+  // Log the token for debugging
+  console.log("Token received:", token);
+
+  jwt.verify(token, SECRET, (err, decodedToken) => {
+    if (err) {
+      console.error("Token verification failed:", err.message);
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+
+    console.log("Token successfully verified. Decoded token:", decodedToken);
+    req.user = decodedToken; // Attach decoded token to request
+    next();
+  });
+};
+
+// Route to get user with reading list and read status
+app.get('/api/users/:id', async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const user = await User.findByPk(userId, {
+      include: {
+        model: Blog,
+        attributes: ['id', 'url', 'title', 'author', 'likes', 'year'],
+        through: {
+          attributes: ['read', 'id'] // Include read status and the join row ID
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Transform the response to match the required format
+    const result = {
+      name: user.name,
+      username: user.username,
+      readings: user.blogs.map(blog => ({
+        id: blog.id,
+        url: blog.url,
+        title: blog.title,
+        author: blog.author,
+        likes: blog.likes,
+        year: blog.year,
+        readinglists: [
+          {
+            read: blog.readinglist.read,
+            id: blog.readinglist.id
+          }
+        ]
+      }))
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST route to add a blog to the user's reading list
+app.post('/api/readinglists', verifyHardcodedToken, async (req, res) => {
+  const { blogId, userId } = req.body;
+
+  try {
+    const user = await User.findByPk(userId);
+    const blog = await Blog.findByPk(blogId);
+
+    if (!user || !blog) {
+      return res.status(404).json({ error: 'User or blog not found' });
+    }
+
+    // Add blog to user's reading list
+    const readingListEntry = await ReadingList.create({
+      userId: user.id,
+      blogId: blog.id,
+      read: false // Default to unread
+    });
+
+    res.status(201).json(readingListEntry);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to add to reading list' });
+  }
+});
+
+// Start the server
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
