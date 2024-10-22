@@ -1,0 +1,62 @@
+// hii.cjs
+
+const express = require('express');
+const { Sequelize, DataTypes, fn, col } = require('sequelize');
+
+const app = express();
+app.use(express.json());
+
+const sequelize = new Sequelize('sqlite::memory:', { logging: false });
+
+const Blog = sequelize.define('blog', {
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  author: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  likes: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  }
+}, {
+  timestamps: false
+});
+
+(async () => {
+  await sequelize.sync({ force: true });
+  // Seed some initial data for testing
+  await Blog.bulkCreate([
+    { title: 'React Basics', author: 'Jami Kousa', likes: 5 },
+    { title: 'Advanced React', author: 'Jami Kousa', likes: 5 },
+    { title: 'Learning Node.js', author: 'Kalle Ilves', likes: 2 },
+    { title: 'JavaScript Tips', author: 'Dan Abramov', likes: 4 }
+  ]);
+})();
+
+// Route to get number of blogs and total likes per author
+app.get('/api/authors', async (req, res) => {
+  try {
+    const authors = await Blog.findAll({
+      attributes: [
+        'author',
+        [fn('COUNT', col('author')), 'articles'],
+        [fn('SUM', col('likes')), 'likes']
+      ],
+      group: ['author'],
+      order: [[fn('SUM', col('likes')), 'DESC']]
+    });
+
+    res.json(authors);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
