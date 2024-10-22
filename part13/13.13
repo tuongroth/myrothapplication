@@ -1,0 +1,133 @@
+// Importing required modules and libraries
+require('dotenv').config()
+const express = require('express')
+const { Sequelize, Model, DataTypes } = require('sequelize')
+const jwt = require('jsonwebtoken')
+
+// Initialize express app
+const app = express()
+app.use(express.json())
+
+// Database connection
+const sequelize = new Sequelize(process.env.DATABASE_URL || 'sqlite::memory:', { logging: false })
+
+// Secret key for JWT
+const SECRET = 'your_secret_key'
+
+// Blog Model
+class Blog extends Model {}
+Blog.init({
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  author: {
+    type: DataTypes.STRING,
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  likes: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+}, { sequelize, modelName: 'blog', timestamps: true })
+
+// User Model
+class User extends Model {}
+User.init({
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+}, { sequelize, modelName: 'user', timestamps: true })
+
+// Define relationships
+User.hasMany(Blog)
+Blog.belongsTo(User)
+
+// Sync models
+sequelize.sync()
+
+// Middleware to extract token
+const tokenExtractor = (req, res, next) => {
+  const authorization = req.get('authorization')
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    try {
+      req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
+    } catch {
+      return res.status(401).json({ error: 'token invalid' })
+    }
+  } else {
+    return res.status(401).json({ error: 'token missing' })
+  }
+  next()
+}
+
+// Login route to get a token
+app.post('/api/login', async (req, res) => {
+  const { username } = req.body
+  const user = await User.findOne({ where: { username } })
+
+  if (!user) {
+    return res.status(401).json({ error: 'invalid username or password' })
+  }
+
+  const token = jwt.sign({ username: user.username, id: user.id }, SECRET)
+  res.status(200).send({ token, username: user.username, name: user.name })
+})
+
+// Route to get all blogs with optional filtering by search keyword
+app.get('/api/blogs', async (req, res) => {
+  const search = req.query.search ? req.query.search.toLowerCase() : null
+
+  // Construct query based on whether search keyword is present
+  const where = search
+    ? {
+        title: sequelize.where(sequelize.fn('LOWER', sequelize.col('title')), 'LIKE', `%${search}%`)
+      }
+    : {}
+
+  const blogs = await Blog.findAll({
+    where,
+    include: { model: User, attributes: ['name'] }
+  })
+
+  res.json(blogs)
+})
+
+// Route to create a blog (only for logged-in users)
+app.post('/api/blogs', tokenExtractor, async (req, res) => {
+  const user = await User.findByPk(req.decodedToken.id)
+  if (!user) {
+    return res.status(401).json({ error: 'invalid user' })
+  }
+
+  const blog = await Blog.create({ ...req.body, userId: user.id })
+  res.status(201).json(blog)
+})
+
+// Route to create a new user
+app.post('/api/users', async (req, res) => {
+  try {
+    const user = await User.create(req.body)
+    res.status(201).json(user)
+  } catch (error) {
+    return res.status(400).json({ error: error.errors.map(e => e.message) })
+  }
+})
+
+// Start the server
+const PORT = process.env.PORT || 3000
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
