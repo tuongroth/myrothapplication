@@ -1,0 +1,67 @@
+// server.js
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = 3001;
+
+// Middleware to parse JSON bodies
+app.use(express.json());
+
+// Path to the database file
+const dbPath = path.join(__dirname, 'db.json');
+
+// Helper function to read from the JSON file
+const readDB = () => {
+  const data = fs.readFileSync(dbPath);
+  return JSON.parse(data);
+};
+
+// Helper function to write to the JSON file
+const writeDB = (data) => {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+};
+
+// Get all notes
+app.get('/api/notes', (req, res) => {
+  const db = readDB();
+  res.json(db.notes);
+});
+
+// Add a new note
+app.post('/api/notes', (req, res) => {
+  const db = readDB();
+  const newNote = req.body;
+
+  // Add an ID or other logic as needed
+  newNote.id = db.notes.length + 1;
+  db.notes.push(newNote);
+
+  writeDB(db);
+  res.status(201).json(newNote);
+});
+
+// Get all users
+app.get('/api/users', (req, res) => {
+  const db = readDB();
+  res.json(db.users);
+});
+
+// Add a new user
+app.post('/api/users', (req, res) => {
+  const db = readDB();
+  const newUser = req.body;
+
+  // Add an ID or other logic as needed
+  newUser.id = db.users.length + 1;
+  db.users.push(newUser);
+
+  writeDB(db);
+  res.status(201).json(newUser);
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
