@@ -1,0 +1,98 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+app.use(express.json()); // Middleware to parse JSON request bodies
+
+// MongoDB connection URI
+const mongoURI = "mongodb+srv://fullstack:2r6FcH9cLQRdnXHJ@cluster0.xgr0xci.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+// Connect to MongoDB
+mongoose.connect(mongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('Connected to MongoDB'))
+  .catch((error) => console.error('MongoDB connection error:', error));
+
+// Define the Review schema and model
+const reviewSchema = new mongoose.Schema({
+  username: String,
+  rating: Number,
+  date: { type: Date, default: Date.now },
+  reviewText: String,
+});
+
+const Review = mongoose.model('Review', reviewSchema);
+
+// Function to seed initial data
+async function seedReviews() {
+  const sampleReviews = [
+    {
+      username: "testuser1",
+      rating: 5,
+      reviewText: "This repository is great!",
+    },
+    {
+      username: "testuser2",
+      rating: 4,
+      reviewText: "Very useful and well-structured!",
+    },
+    {
+      username: "testuser3",
+      rating: 3,
+      reviewText: "Good, but could use some improvements.",
+    },
+  ];
+
+  for (const reviewData of sampleReviews) {
+    const review = new Review(reviewData);
+    await review.save();
+    console.log(`Review added: ${JSON.stringify(reviewData)}`);
+  }
+}
+
+// Check if the database is empty and add sample reviews
+async function checkAndSeedDatabase() {
+  const reviewCount = await Review.countDocuments();
+  if (reviewCount === 0) {
+    await seedReviews();
+  } else {
+    console.log('Reviews already exist in the database.');
+  }
+}
+
+// Call function to check and seed the database
+checkAndSeedDatabase().catch(error => console.error('Error seeding database:', error));
+
+// Define a route to get all reviews
+app.get('/reviews', async (req, res) => {
+  try {
+    const reviews = await Review.find();
+    res.json(reviews);
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// Define a route to add a new review
+app.post('/reviews', async (req, res) => {
+  try {
+    const { username, rating, reviewText } = req.body;
+    const review = new Review({ username, rating, reviewText });
+    await review.save();
+    res.status(201).json(review);
+  } catch (error) {
+    console.error('Error saving review:', error);
+    res.status(500).json({ error: 'Failed to save review' });
+  }
+});
+
+// Start the server
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
