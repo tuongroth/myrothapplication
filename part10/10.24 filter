@@ -1,0 +1,213 @@
+import React, { useState } from 'react';
+import { View, Text, FlatList, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { format } from 'date-fns';
+
+// Mock data for testing
+const MOCK_REPOSITORY = {
+  id: '1',
+  fullName: 'jaredpalmer/formik',
+  reviews: {
+    edges: [
+      {
+        node: {
+          id: '1',
+          text: 'This library makes forms so much easier to handle.',
+          rating: 90,
+          createdAt: '2023-11-01T00:00:00Z',
+          user: { id: '1', username: 'user1' },
+        },
+      },
+      {
+        node: {
+          id: '2',
+          text: 'Good tool, but could use better documentation.',
+          rating: 70,
+          createdAt: '2023-10-15T00:00:00Z',
+          user: { id: '2', username: 'user2' },
+        },
+      },
+    ],
+  },
+};
+
+// Main Repository Info Component
+const RepositoryInfo = ({ repository }) => (
+  <View style={styles.repoInfo}>
+    <Text style={styles.repoName}>{repository.fullName}</Text>
+  </View>
+);
+
+// Review Item Component
+const ReviewItem = ({ review }) => {
+  const formattedDate = format(new Date(review.createdAt), 'dd.MM.yyyy');
+  return (
+    <View style={styles.reviewItem}>
+      <View style={styles.ratingCircle}>
+        <Text style={styles.ratingText}>{review.rating}</Text>
+      </View>
+      <View style={styles.reviewContent}>
+        <Text style={styles.username}>{review.user.username}</Text>
+        <Text style={styles.date}>{formattedDate}</Text>
+        <Text>{review.text}</Text>
+      </View>
+    </View>
+  );
+};
+
+// Review Form Component without Formik
+const ReviewForm = ({ onReviewSubmitted }) => {
+  const [ownerName, setOwnerName] = useState('');
+  const [repositoryName, setRepositoryName] = useState('');
+  const [rating, setRating] = useState('');
+  const [text, setText] = useState('');
+
+  const handleSubmit = () => {
+    if (!ownerName || !repositoryName || !rating) {
+      Alert.alert("Validation Error", "Please fill all required fields with valid values.");
+      return;
+    }
+
+    if (isNaN(rating) || rating < 0 || rating > 100) {
+      Alert.alert("Validation Error", "Rating must be a number between 0 and 100.");
+      return;
+    }
+
+    Alert.alert("Success", "Review submitted!");
+    onReviewSubmitted();
+  };
+
+  return (
+    <View style={styles.formContainer}>
+      <TextInput
+        placeholder="Repository owner's GitHub username"
+        value={ownerName}
+        onChangeText={setOwnerName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Repository name"
+        value={repositoryName}
+        onChangeText={setRepositoryName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Rating (0-100)"
+        value={rating}
+        onChangeText={setRating}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Review"
+        value={text}
+        onChangeText={setText}
+        multiline
+        style={[styles.input, { height: 100 }]}
+      />
+      <Button title="Submit Review" onPress={handleSubmit} />
+    </View>
+  );
+};
+
+// Single Repository View with Reviews List and Filtering
+const SingleRepository = () => {
+  const repository = MOCK_REPOSITORY;
+  const reviews = repository.reviews.edges.map(edge => edge.node);
+
+  const [filter, setFilter] = useState('');
+
+  // Filter reviews based on search input
+  const filteredReviews = reviews.filter(review =>
+    review.text.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  return (
+    <FlatList
+      data={filteredReviews}
+      renderItem={({ item }) => <ReviewItem review={item} />}
+      keyExtractor={({ id }) => id}
+      ListHeaderComponent={() => (
+        <>
+          <RepositoryInfo repository={repository} />
+          <TextInput
+            placeholder="Search reviews"
+            value={filter}
+            onChangeText={setFilter}
+            style={styles.input}
+          />
+          <ReviewForm onReviewSubmitted={() => Alert.alert("Review Refreshed")} />
+        </>
+      )}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+    />
+  );
+};
+
+// Navigation Setup
+const Stack = createStackNavigator();
+const App = () => (
+  <NavigationContainer>
+    <Stack.Navigator initialRouteName="SingleRepository">
+      <Stack.Screen name="SingleRepository" component={SingleRepository} />
+    </Stack.Navigator>
+  </NavigationContainer>
+);
+
+// Styles
+const styles = StyleSheet.create({
+  repoInfo: {
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+  },
+  repoName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  reviewItem: {
+    flexDirection: 'row',
+    padding: 15,
+    backgroundColor: '#fff',
+  },
+  ratingCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0366d6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  reviewContent: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  username: {
+    fontWeight: 'bold',
+  },
+  date: {
+    color: '#888',
+    marginBottom: 5,
+  },
+  formContainer: {
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
+  },
+  separator: {
+    height: 10,
+    backgroundColor: '#f0f0f0',
+  },
+});
+
+export default App;
