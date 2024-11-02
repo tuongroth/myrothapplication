@@ -1,0 +1,123 @@
+import React, { useState } from 'react';
+import { View, FlatList, Text, TextInput, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { Searchbar } from 'react-native-paper';
+import { useDebounce } from 'use-debounce';
+
+// Mock data for repositories (replace with your actual data fetching logic)
+const repositories = [
+  { id: '1', name: 'Repo One', rating: 4.5, createdAt: '2023-01-10' },
+  { id: '2', name: 'Repo Two', rating: 3.2, createdAt: '2023-01-15' },
+  { id: '3', name: 'Repo Three', rating: 4.8, createdAt: '2023-02-01' },
+  { id: '4', name: 'Repo Four', rating: 2.8, createdAt: '2023-03-05' },
+];
+
+// Mock useRepositories hook
+const useRepositories = ({ orderBy, orderDirection, searchKeyword }) => {
+  let sortedRepositories = [...repositories];
+  
+  // Apply sorting
+  if (orderBy === 'CREATED_AT') {
+    sortedRepositories.sort((a, b) => 
+      orderDirection === 'DESC' ? new Date(b.createdAt) - new Date(a.createdAt) : new Date(a.createdAt) - new Date(b.createdAt)
+    );
+  } else if (orderBy === 'RATING_AVERAGE') {
+    sortedRepositories.sort((a, b) => 
+      orderDirection === 'DESC' ? b.rating - a.rating : a.rating - b.rating
+    );
+  }
+
+  // Apply filtering
+  if (searchKeyword) {
+    sortedRepositories = sortedRepositories.filter(repo =>
+      repo.name.toLowerCase().includes(searchKeyword.toLowerCase())
+    );
+  }
+
+  return { repositories: sortedRepositories };
+};
+
+const App = () => {
+  // State for sorting
+  const [orderBy, setOrderBy] = useState('CREATED_AT');
+  const [orderDirection, setOrderDirection] = useState('DESC');
+
+  // State for search keyword and debounced value
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [debouncedSearchKeyword] = useDebounce(searchKeyword, 500);
+
+  // Get sorted and filtered repositories
+  const { repositories } = useRepositories({ orderBy, orderDirection, searchKeyword: debouncedSearchKeyword });
+
+  // Sorting Picker Component
+  const SortingPicker = () => (
+    <Picker
+      selectedValue={orderBy}
+      onValueChange={(value) => {
+        setOrderBy(value);
+        setOrderDirection(value === 'CREATED_AT' ? 'DESC' : 'DESC');
+      }}
+      style={styles.picker}
+    >
+      <Picker.Item label="Latest repositories" value="CREATED_AT" />
+      <Picker.Item label="Highest rated repositories" value="RATING_AVERAGE" />
+      <Picker.Item label="Lowest rated repositories" value="RATING_AVERAGE_ASC" />
+    </Picker>
+  );
+
+  // Header Component for FlatList
+  const ListHeader = () => (
+    <View>
+      <Searchbar
+        placeholder="Search by name"
+        value={searchKeyword}
+        onChangeText={setSearchKeyword}
+        style={styles.searchBar}
+      />
+      <SortingPicker />
+    </View>
+  );
+
+  return (
+    <FlatList
+      data={repositories}
+      keyExtractor={(item) => item.id}
+      ListHeaderComponent={<ListHeader />}
+      renderItem={({ item }) => (
+        <View style={styles.item}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.rating}>Rating: {item.rating}</Text>
+          <Text style={styles.date}>Reviewed on: {item.createdAt}</Text>
+        </View>
+      )}
+    />
+  );
+};
+
+const styles = StyleSheet.create({
+  searchBar: {
+    margin: 10,
+    borderRadius: 5,
+  },
+  picker: {
+    margin: 10,
+  },
+  item: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  rating: {
+    fontSize: 14,
+  },
+  date: {
+    fontSize: 12,
+    color: '#666',
+  },
+});
+
+export default App;
